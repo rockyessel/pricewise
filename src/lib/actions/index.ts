@@ -4,7 +4,8 @@ import Product from '../models/product.model';
 import { connectToDB } from '../mongoose';
 import { getAveragePrice, getHighestPrice, getLowestPrice } from '../utils';
 import { scrapeAmazonProduct } from './scraper';
-import { Product as ProductProps } from '@/types';
+import { Product as ProductProps, User } from '@/types';
+import { generateEmailBody } from '../nodemailer';
 
 export async function scrapeAndStoreProduct(productURL: string) {
   if (!productURL) return;
@@ -47,7 +48,9 @@ export async function scrapeAndStoreProduct(productURL: string) {
   }
 }
 
-export async function getProductById(productId: string):Promise<ProductProps | null | undefined> {
+export async function getProductById(
+  productId: string
+): Promise<ProductProps | null | undefined> {
   try {
     connectToDB();
     const product = await Product.findOne({ _id: productId });
@@ -68,7 +71,9 @@ export async function getAllProducts(): Promise<ProductProps[] | undefined> {
   }
 }
 
-export async function getSimilarProduct(productId: string): Promise<ProductProps[] | null | undefined> {
+export async function getSimilarProduct(
+  productId: string
+): Promise<ProductProps[] | null | undefined> {
   try {
     connectToDB();
     const currentProduct = await Product.findById(productId);
@@ -83,3 +88,29 @@ export async function getSimilarProduct(productId: string): Promise<ProductProps
     console.log(error);
   }
 }
+
+export const addUserEmailToProduct = async (
+  productId: string,
+  userEmail: string
+) => {
+  try {
+    const product = await Product.findById(productId);
+    if (!product) return;
+
+    const userExists = product.users.some(
+      (user: User) => user.email === userEmail
+    );
+
+    if (!userExists) {
+      product.users.push({ email: userEmail });
+
+      await product.save();
+
+      const emailContent = generateEmailBody(product, 'WELCOME');
+
+      await sendEmail(email)
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};
